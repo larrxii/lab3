@@ -2,10 +2,12 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 // Сервер
 class EchoServer
 {
     private static int solvedCount = 0;
+    private static int clientId = 1;
     public static void Main()
     {
         StartServer();
@@ -28,44 +30,9 @@ class EchoServer
                 // Принимаем клиента
                 TcpClient client = server.AcceptTcpClient();
                 Console.WriteLine("Клиент подключен!");
-                // Получаем поток для чтения и записи
-                NetworkStream stream = client.GetStream();
-                try
-                {
-                    byte[] buffer = new byte[1024];
-                    int bytesRead;
-                    // Читаем данные от клиента
-                    while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
-                    {
-                        string receivedMessage = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        Console.WriteLine($"Получено: {receivedMessage}"); 
 
-                        string[] coefficients = receivedMessage.Split(' ');
-                        if (coefficients.Length != 3 || !double.TryParse(coefficients[0], out double a) || !double.TryParse(coefficients[1], out double b) || !double.TryParse(coefficients[2], out double c))
-                        {
-                            string errorResponse = "Ошибка!";
-                            byte[] response = Encoding.UTF8.GetBytes(errorResponse);
-                            stream.Write(response, 0, response.Length);
-                            Console.WriteLine($"Отправлено обратно: {errorResponse}");
-                            continue;
-                        }
-                        string result = QuadraticEquation(a, b, c);
-                        byte[] responseBytes = Encoding.UTF8.GetBytes(result);
-                        stream.Write(responseBytes, 0, responseBytes.Length);
-                        Console.WriteLine("Отправлено обратно: {0}", result);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Ошибка при обработке клиента: {0}", ex.Message);
-                }
-                finally
-                {
-                    // Закрываем соединение с клиентом
-                    stream.Close();
-                    client.Close();
-                    Console.WriteLine("Клиент отключен");
-                }
+                Task.Run(() => HandleClient(client));
+                // Получаем поток для чтения и записи             
             }
         }
         catch (Exception ex)
@@ -75,6 +42,48 @@ class EchoServer
         finally
         {
             server.Stop();
+        }
+    }
+
+    private static void HandleClient(TcpClient client)
+    {
+        NetworkStream stream = client.GetStream();
+        int currentClientId = clientId++;
+        try
+        {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            // Читаем данные от клиента
+            while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                string receivedMessage = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                Console.WriteLine($"Клиент {currentClientId}: {receivedMessage}");
+
+                string[] coefficients = receivedMessage.Split(' ');
+                if (coefficients.Length != 3 || !double.TryParse(coefficients[0], out double a) || !double.TryParse(coefficients[1], out double b) || !double.TryParse(coefficients[2], out double c))
+                {
+                    string errorResponse = "Ошибка!";
+                    byte[] response = Encoding.UTF8.GetBytes(errorResponse);
+                    stream.Write(response, 0, response.Length);
+                    Console.WriteLine($"Отправлено обратно: {errorResponse}");
+                    continue;
+                }
+                string result = QuadraticEquation(a, b, c);
+                byte[] responseBytes = Encoding.UTF8.GetBytes(result);
+                stream.Write(responseBytes, 0, responseBytes.Length);
+                Console.WriteLine($"Клиенту {currentClientId} отправлено обратно: {result}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Ошибка при обработке клиента: {0}", ex.Message);
+        }
+        finally
+        {
+            // Закрываем соединение с клиентом
+            stream.Close();
+            client.Close();
+            Console.WriteLine("Клиент отключен");
         }
     }
 
