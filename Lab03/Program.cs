@@ -13,12 +13,12 @@ class EchoClient
             // Бесконечный цикл для ввода сообщений
             while (true)
             {
-                Console.Write("Введите сообщение (или 'exit' для выхода): ");
+                Console.Write("Введите коэффициенты квадратного уравнения через пробел (или 'exit' для выхода): ");
                 string message = Console.ReadLine();
                 // Проверяем условие выхода
                 if (message.ToLower() == "exit")
                     break;
-                // От // Отправляем сообщение
+                // Отправляем сообщение
                 byte[] data = Encoding.UTF8.GetBytes(message);
                 stream.Write(data, 0, data.Length);
                 Console.WriteLine("Отправлено: {0}", message);
